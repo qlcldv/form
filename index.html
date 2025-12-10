@@ -669,18 +669,18 @@ function compressImage(file, maxWidth, quality, callback) {
         if(note) faultStr += (faultStr ? ". " : "") + note;
         if(!faultStr) { alert("Vui lòng chọn hoặc nhập lỗi vi phạm!"); return; }
         let staffObj = { name, code, title, fault: faultStr, img: null };
-        if(imgInput.files && imgInput.files[0]) {
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                staffObj.img = e.target.result;
-                staffList.push(staffObj);
-                renderStaff();
-            }
-            reader.readAsDataURL(imgInput.files[0]);
-        } else {
-            staffList.push(staffObj);
-            renderStaff();
-        }
+if(imgInput.files && imgInput.files[0]) {
+    // Nén ảnh: Max chiều rộng 1000px, chất lượng 70% (0.7)
+    // Bạn có thể giảm quality xuống 0.5 hoặc 0.6 nếu muốn file nhẹ hơn nữa
+    compressImage(imgInput.files[0], 1000, 0.7, function(compressedDataUrl) {
+        staffObj.img = compressedDataUrl;
+        staffList.push(staffObj);
+        renderStaff();
+    });
+} else {
+    staffList.push(staffObj);
+    renderStaff();
+}
         document.getElementById('st_name').value = "";
         document.getElementById('st_code').value = "";
         document.getElementById('st_title').value = "";
