@@ -122,7 +122,7 @@
         .text-center { text-align: center; }
         .text-left { text-align: left; }
         .header-row { background-color: #e0e0e0 !important; font-weight: bold; text-transform: uppercase; -webkit-print-color-adjust: exact; }
-        .img-print { max-width: 100px; max-height: 100px; display: block; margin: 2px auto; }
+        .img-print { max-width: 300px; max-height: 300px; display: block; margin: 2px auto; }
         
         /* Print Reason Note */
         .no-eval-note { font-style: italic; color: #555; margin-top: 5px; display: block;}
@@ -399,7 +399,7 @@
                 <div id="error_list_display"></div>
             </div>
             <div style="margin-top:20px;">
-                <label class="input-label">Ý kiến Lãnh đạo/Phụ trách ĐVKD:</label>
+                <label class="input-label">Ý kiến Trưởng Đơn vị/Phụ trách ĐVKD:</label>
                 <textarea id="inp_manager" class="form-control" rows="5" placeholder="Nhập ý kiến phản hồi..."></textarea>
             </div>
         </div>
@@ -481,14 +481,14 @@
                         </div>
 
                         <div class="signature-block" style="margin-top:20px; page-break-inside:avoid;">
-                            <b>Ý KIẾN CỦA LÃNH ĐẠO/PHỤ TRÁCH ĐVKD:</b><br>
+                            <b>Ý KIẾN CỦA TRƯỞNG ĐƠN VỊ/PHỤ TRÁCH ĐVKD:</b><br>
                             <div id="p_manager" style="font-style:italic; margin:5px 0; min-height: 40px; border-bottom:1px dotted #000; padding:5px;"></div>
                         </div>
 
                         <table class="signature-block" style="width:100%; border:none; margin-top:40px; page-break-inside:avoid;">
                             <tr>
                                 <td style="border:none; text-align:center; width:50%; vertical-align:top;">
-                                    <b>ĐẠI DIỆN ĐƠN VỊ KINH DOANH</b><br>
+                                    <b>TRƯỞNG ĐƠN VỊ/PHỤ TRÁCH ĐƠN VỊ</b><br>
                                     <i>(Ký, ghi rõ họ tên)</i>
                                     <br><br><br><br><br>
                                 </td>
@@ -564,6 +564,37 @@
         document.getElementById('count_fail').innerText = count;
     }
 
+
+// --- Hàm nén ảnh: Giảm kích thước và chất lượng ---
+function compressImage(file, maxWidth, quality, callback) {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = function(event) {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = function() {
+            // Tính toán kích thước mới
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+
+            // Vẽ ảnh lên canvas để nén
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Xuất ra dạng Base64 với định dạng JPEG và chất lượng nén (0.0 - 1.0)
+            // quality = 0.7 là mức cân bằng tốt giữa dung lượng và độ nét
+            const dataUrl = canvas.toDataURL('image/jpeg', quality); 
+            callback(dataUrl);
+        };
+    };
+}
     function toggleSectionState(key, isYes) {
         const container = document.getElementById(`${key}_container`);
         const btnYes = document.getElementById(`btn_${key}_yes`);
@@ -600,18 +631,17 @@
         if(!desc) { alert("Chưa nhập nội dung lỗi!"); return; }
         let errObj = { desc: desc, date: date ? date.split('-').reverse().join('/') : "", img: null };
 
-        if(imgInput.files && imgInput.files[0]) {
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                errObj.img = e.target.result;
-                errorList.push(errObj);
-                renderErrors();
-            }
-            reader.readAsDataURL(imgInput.files[0]);
-        } else {
-            errorList.push(errObj);
-            renderErrors();
-        }
+       if(imgInput.files && imgInput.files[0]) {
+    // Nén ảnh: Max chiều rộng 1000px, chất lượng 70%
+    compressImage(imgInput.files[0], 1000, 0.7, function(compressedDataUrl) {
+        errObj.img = compressedDataUrl;
+        errorList.push(errObj);
+        renderErrors();
+    });
+} else {
+    errorList.push(errObj);
+    renderErrors();
+        } 
         document.getElementById('err_desc').value = "";
         document.getElementById('err_img').value = "";
     }
