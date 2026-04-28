@@ -144,14 +144,42 @@
             .paper { width: 100%; padding: 10px; }
             #print-section { padding-top: 0; }
         }
+        
+        /* CẬP NHẬT: THUỘC TÍNH CSS KIỂM SOÁT VIỆC NGẮT TRANG VÀ LỀ KHI IN */
         @media print {
+            /* Cấu hình lề trang in chính xác theo chuẩn Word */
+            @page { 
+                size: A4 portrait;
+                margin-top: 2cm;
+                margin-bottom: 1.8cm;
+                margin-left: 2.5cm;
+                margin-right: 2cm;
+            }
             body { background: white; margin: 0; padding: 0; }
             .app-container, .fab-bar, .print-controls { display: none !important; }
-            #print-section { display: block !important; background: white; position: absolute; top: 0; left: 0; width: 100%; height: auto; margin: 0; padding: 0; color: #000; }
-            .paper { width: 100%; margin: 0; padding: 0; box-shadow: none; display: block; }
+            
+            /* Loại bỏ position absolute để trình duyệt tự động ngắt nhiều trang tự nhiên nhất */
+            #print-section { display: block !important; background: white; width: 100%; margin: 0; padding: 0; color: #000; }
+            
+            /* Trả padding của .paper về 0 vì đã dùng lề gốc của @page ở trên, giúp lề trang nào cũng đều nhau */
+            .paper { width: 100%; margin: 0; padding: 0; box-shadow: none; display: block; box-sizing: border-box; }
+            
+            /* Tối ưu khoảng trắng header/footer trên trang in */
             thead { display: table-header-group; } 
+            thead td { padding-bottom: 5px; } /* Đã chỉnh padding phía dưới header gọn lại */
             tfoot { display: table-footer-group; }
-            .signature-block { page-break-inside: avoid; }
+            
+            /* Chống cắt đôi dòng trong bảng và cắt đôi tiêu đề */
+            tr, td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
+            h4 { page-break-after: avoid !important; break-after: avoid !important; margin-top: 15px;} 
+            
+            /* Lớp CSS đẩy nội dung sang trang mới (đã xóa class này ở phần HTML để hệ thống tự ngắt trang cho mượt) */
+            .page-break { page-break-before: always !important; break-before: page !important; }
+            
+            /* Giữ toàn bộ block chữ ký ở một trang nếu không đủ không gian, nhưng không ép nhảy ngay lúc đầu */
+            .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; margin-top: 15px !important;}
+            .signature-container { page-break-inside: avoid !important; break-inside: avoid !important; }
+            
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
         }
     </style>
@@ -481,9 +509,9 @@
         <table class="print-layout-table">
             <thead>
                 <tr>
-                    <td>
+                    <td style="padding-bottom: 5px;">
                         <!-- VỊ TRÍ HEADER TRÊN BẢN IN -->
-                        <div style="margin-bottom: 20px; text-align: center;">
+                        <div style="margin-bottom: 10px; text-align: center;">
                             <!-- ========================================================================= -->
                             <!-- DÁN MÃ HÌNH ẢNH BASE64 CỦA HEADER BẢN IN VÀO THUỘC TÍNH src="" BÊN DƯỚI -->
                             <!-- ========================================================================= -->
@@ -495,11 +523,11 @@
             <tbody>
                 <tr>
                     <td>
-                        <div style="text-align: center; text-transform: uppercase; margin-bottom: 20px; font-weight: bold; color: #000;">
+                        <div style="text-align: center; text-transform: uppercase; margin-bottom: 15px; font-weight: bold; color: #000;">
                             <div style="font-size: 15pt; line-height: 1.4;">BÁO CÁO KẾT QUẢ ĐÁNH GIÁ CHẤT LƯỢNG DỊCH VỤ</div>
                         </div>
                         
-                        <table style="width:100%; border:none; margin-bottom:15px; font-size: 12pt;">
+                        <table style="width:100%; border:none; margin-bottom:10px; font-size: 12pt;">
                             <tr>
                                 <td style="border:none; width: 60%;">Đơn vị kinh doanh: <b id="p_dvkd"></b></td>
                                 <td style="border:none;">Ngày đánh giá: <b id="p_date"></b></td>
@@ -513,7 +541,7 @@
                         <!-- SUMMARY BOARD SẼ ĐƯỢC CHÈN VÀO ĐÂY BẰNG JS -->
                         <div id="print_summary_board"></div>
 
-                        <h4 style="border-bottom:1px solid #ccc; padding-bottom:5px; text-transform: uppercase; color:#000; margin-top: 25px;">I-III. CHI TIẾT CÁC TIÊU CHÍ CẦN KHẮC PHỤC </h4>
+                        <h4 style="border-bottom:1px solid #ccc; padding-bottom:5px; text-transform: uppercase; color:#000; margin-top: 20px;">I-III. CHI TIẾT CÁC TIÊU CHÍ CẦN KHẮC PHỤC </h4>
                         <!-- TABLE BÁO CÁC LỖI -->
                         <div id="report_content"></div>
 
@@ -536,7 +564,7 @@
                             <div id="print_staff_none" class="no-eval-note" style="text-align:center; display:none;"></div>
                         </div>
 
-                        <!-- Bảng Lỗi CSVC -->
+                        <!-- Bảng Lỗi CSVC (ĐÃ XÓA CLASS .page-break ĐỂ KHÔNG ÉP XUỐNG TRANG TRỪ KHI HẾT CHỖ) -->
                         <div style="margin-top:20px">
                             <h4 style="border-bottom:1px solid #ccc; padding-bottom:5px; text-transform: uppercase; color:#000;">V. GHI NHẬN ĐÁNH GIÁ CSVC,5S / THỜI GIAN KHẮC PHỤC</h4>
                             <table class="report-table" style="margin-top:5px" id="print_error_table">
@@ -555,26 +583,29 @@
                             <div id="print_error_none" class="no-eval-note" style="text-align:center; display:none;"></div>
                         </div>
 
-                        <div class="signature-block" style="margin-top:20px; page-break-inside:avoid;">
-                            <b>Ý KIẾN CỦA TRƯỞNG ĐƠN VỊ/PHỤ TRÁCH ĐVKD:</b><br>
-                            <div id="p_manager" style="font-style:italic; margin:5px 0; min-height: 40px; border-bottom:1px dotted #000; padding:5px;"></div>
-                        </div>
+                        <!-- GÓI CẢ NHẬN XÉT VÀ CHỮ KÝ VÀO 1 KHỐI ĐỂ TRÁNH BỊ CẮT TRANG -->
+                        <div class="signature-container">
+                            <div class="signature-block">
+                                <b>Ý KIẾN CỦA TRƯỞNG ĐƠN VỊ/PHỤ TRÁCH ĐVKD:</b><br>
+                                <div id="p_manager" style="font-style:italic; margin:5px 0; min-height: 40px; border-bottom:1px dotted #000; padding:5px;"></div>
+                            </div>
 
-                        <table class="signature-block" style="width:100%; border:none; margin-top:40px; page-break-inside:avoid;">
-                            <tr>
-                                <td style="border:none; text-align:center; width:50%; vertical-align:top;">
-                                    <b>TRƯỞNG ĐƠN VỊ/PHỤ TRÁCH ĐƠN VỊ</b><br>
-                                    <i>(Ký, ghi rõ họ tên)</i>
-                                    <br><br><br><br><br>
-                                </td>
-                                <td style="border:none; text-align:center; width:50%; vertical-align:top;">
-                                    <b>ĐÁNH GIÁ VIÊN</b><br>
-                                    <i>(Ký, ghi rõ họ tên)</i>
-                                    <br><br><br><br><br>
-                                    <div id="signer_name" style="text-transform:uppercase; font-weight:bold;"></div>
-                                </td>
-                            </tr>
-                        </table>
+                            <table class="signature-block" style="width:100%; border:none; margin-top:30px; page-break-inside:avoid;">
+                                <tr>
+                                    <td style="border:none; text-align:center; width:50%; vertical-align:top;">
+                                        <b>TRƯỞNG ĐƠN VỊ/PHỤ TRÁCH ĐƠN VỊ</b><br>
+                                        <i>(Ký, ghi rõ họ tên)</i>
+                                        <br><br><br><br><br>
+                                    </td>
+                                    <td style="border:none; text-align:center; width:50%; vertical-align:top;">
+                                        <b>ĐÁNH GIÁ VIÊN</b><br>
+                                        <i>(Ký, ghi rõ họ tên)</i>
+                                        <br><br><br><br><br>
+                                        <div id="signer_name" style="text-transform:uppercase; font-weight:bold;"></div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
                     </td>
                 </tr>
             </tbody>
