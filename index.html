@@ -57,6 +57,35 @@
         .btn-eval.fail.active { background-color: #dc3545; color: white; border-color: #dc3545; box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3); }
         .btn-eval.info.active { background-color: #17a2b8; color: white; border-color: #17a2b8; box-shadow: 0 2px 4px rgba(23, 162, 184, 0.3); }
         .btn-eval.secondary.active { background-color: #6c757d; color: white; border-color: #6c757d; }
+        .btn-eval.pending.active { background-color: #fd7e14; color: white; border-color: #fd7e14; box-shadow: 0 2px 4px rgba(253, 126, 20, 0.3); }
+        
+        .btn-link-sec5 {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            padding: 2px 8px;
+            background: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: all 0.2s;
+            text-decoration: none;
+            width: fit-content;
+        }
+        .btn-link-sec5:hover { background: #e0e7ff; color: #3730a3; }
+        .badge-linked {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            margin-top: 4px;
+        }
         
         /* Toggle Box Style */
         .toggle-box {
@@ -166,17 +195,16 @@
             
             /* Tối ưu khoảng trắng header/footer trên trang in */
             thead { display: table-header-group; } 
-            thead td { padding-bottom: 5px; } /* Đã chỉnh padding phía dưới header gọn lại */
+            thead td { padding-bottom: 5px; }
             tfoot { display: table-footer-group; }
             
             /* Chống cắt đôi dòng trong bảng và cắt đôi tiêu đề */
             tr, td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
             h4 { page-break-after: avoid !important; break-after: avoid !important; margin-top: 15px;} 
             
-            /* Lớp CSS đẩy nội dung sang trang mới (đã xóa class này ở phần HTML để hệ thống tự ngắt trang cho mượt) */
             .page-break { page-break-before: always !important; break-before: page !important; }
             
-            /* Giữ toàn bộ block chữ ký ở một trang nếu không đủ không gian, nhưng không ép nhảy ngay lúc đầu */
+            /* Giữ toàn bộ block chữ ký ở một trang nếu không đủ không gian */
             .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; margin-top: 15px !important;}
             .signature-container { page-break-inside: avoid !important; break-inside: avoid !important; }
             
@@ -221,13 +249,20 @@
     <script>
         function createRow(id, label) {
             return `
-            <div class="row-item">
+            <div class="row-item" id="row_box_${id}">
                 <div class="row-top">
-                    <div class="row-label">${label}</div>
+                    <div class="row-label" id="lbl_${id}">${label}</div>
                     <div class="btn-group">
-                        <button class="btn-eval pass active" onclick="setRate('${id}', 'Đạt', this)">Đạt</button>
-                        <button class="btn-eval fail" onclick="setRate('${id}', 'Không đạt', this)">Không đạt</button>
+                        <button type="button" class="btn-eval pass active" onclick="setRate('${id}', 'Đạt', this)">Đạt</button>
+                        <button type="button" class="btn-eval pending" onclick="setRate('${id}', 'Đang khắc phục', this)">Đang khắc phục</button>
+                        <button type="button" class="btn-eval fail" onclick="setRate('${id}', 'Không đạt', this)">Không đạt</button>
                     </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn-link-sec5" id="btn_fwd_${id}" onclick="forwardToSec5('${id}')" title="Tự động thêm tiêu chí này vào danh sách Lỗi & Theo dõi Mục V">
+                        ↪ Đẩy sang Mục V theo dõi
+                    </button>
+                    <span id="linked_tag_${id}" class="badge-linked" style="display:none;">✔ Đã chuyển Mục V</span>
                 </div>
                 <input type="hidden" id="s_${id}" class="val-storage" value="Đạt">
             </div>`;
@@ -490,9 +525,16 @@
                 </div>
                 <div id="error_list_display"></div>
             </div>
+
+            <!-- BỔ SUNG Ô NHẬP Ý KIẾN CỦA CÁN BỘ ĐÁNH GIÁ TRƯỚC Ý KIẾN CỦA ĐƠN VỊ -->
             <div style="margin-top:20px;">
+                <label class="input-label">Ý kiến của Cán bộ đánh giá:</label>
+                <textarea id="inp_evaluator" class="form-control" rows="4" placeholder="Nhập ý kiến, nhận xét của Cán bộ đánh giá..."></textarea>
+            </div>
+
+            <div style="margin-top:15px;">
                 <label class="input-label">Ý kiến Trưởng Đơn vị/Phụ trách ĐVKD:</label>
-                <textarea id="inp_manager" class="form-control" rows="5" placeholder="Nhập ý kiến phản hồi..."></textarea>
+                <textarea id="inp_manager" class="form-control" rows="5" placeholder="Nhập ý kiến phản hồi của ĐVKD..."></textarea>
             </div>
         </div>
     </div>
@@ -564,12 +606,11 @@
                             <div id="print_staff_none" class="no-eval-note" style="text-align:center; display:none;"></div>
                         </div>
 
-                        <!-- Bảng Lỗi CSVC (ĐÃ XÓA CLASS .page-break ĐỂ KHÔNG ÉP XUỐNG TRANG TRỪ KHI HẾT CHỖ) -->
+                        <!-- Bảng Lỗi CSVC -->
                         <div style="margin-top:20px">
                             <h4 style="border-bottom:1px solid #ccc; padding-bottom:5px; text-transform: uppercase; color:#000;">V. GHI NHẬN ĐÁNH GIÁ CSVC,5S / THỜI GIAN KHẮC PHỤC</h4>
                             <table class="report-table" style="margin-top:5px" id="print_error_table">
                                 <thead>
-                                    <!-- CỘT HƯỚNG XỬ LÝ V VÀ THỜI HẠN ĐÃ ĐƯỢC GỘP -->
                                     <tr>
                                         <th width="40">STT</th>
                                         <th width="25%">Nội dung lỗi</th>
@@ -585,6 +626,12 @@
 
                         <!-- GÓI CẢ NHẬN XÉT VÀ CHỮ KÝ VÀO 1 KHỐI ĐỂ TRÁNH BỊ CẮT TRANG -->
                         <div class="signature-container">
+                            <!-- BỔ SUNG Ý KIẾN CỦA CÁN BỘ ĐÁNH GIÁ TRÊN BẢN IN -->
+                            <div class="signature-block" style="margin-bottom: 15px;">
+                                <b>Ý KIẾN CỦA CÁN BỘ ĐÁNH GIÁ:</b><br>
+                                <div id="p_evaluator" style="font-style:italic; margin:5px 0; min-height: 40px; border-bottom:1px dotted #000; padding:5px;"></div>
+                            </div>
+
                             <div class="signature-block">
                                 <b>Ý KIẾN CỦA TRƯỞNG ĐƠN VỊ/PHỤ TRÁCH ĐVKD:</b><br>
                                 <div id="p_manager" style="font-style:italic; margin:5px 0; min-height: 40px; border-bottom:1px dotted #000; padding:5px;"></div>
@@ -619,20 +666,61 @@
 </div>
 
 <script>
-    const unitList = ["CN Hà Nội", "PGD Đông Đô", "PGD Tràng An", "PGD Vạn Xuân", "PGD ĐT Long Biên", "PGD Tây Hồ", "PGD Trung Tâm", "PGD Cầu Giấy", "CN Hoàng Mai", "PGD Văn Quán", "PGD ĐT Tây Hà Nội", "CN Hà Đông", "PGD ĐT Phan Đình Phùng", "CN Thăng Long", "CN Bắc Ninh", "PGD Từ Sơn", "CN Quảng Ninh", "CN Hải Phòng", "PGD Lê Chân", "PGD Thủy Nguyên", "CN Đà Nẵng", "PGD Trung Tâm Thương Mại", "PGD Sơn Trà", "PGD An Hải", "PGD Trưng Nữ Vương", "PGD Trần Cao Vân", "PGD Thanh Khê", "PGD Hải Châu", "CN Hội An", "PGD Điện Bàn", "PGD Thăng Bình", "PGD Núi Thành", "PGD Duy Xuyên", "PGD Tam Kỳ", "CN Quảng Ngãi", "PGD Bình Sơn", "PGD Đức Phổ", "PGD Thạch Trụ", "PGD Lê Trung Đình", "PGD Sơn Tịnh", "CN Quy Nhơn", "PGD An Nhơn", "CN Buôn Ma Thuột", "CN TP Hồ Chí Minh", "PGD Quận 7", "PGD Khánh Hội", "PGD Quận 9", "PGD Thủ Thiêm", "PGD ĐT Nam Sài Gòn", "CN Chợ Lớn", "PGD Hòa Bình-Chợ Lớn", "PGD Phùng Hưng", "PGD Hồng Bàng", "PGD Phú Lâm", "PGD Quận 8", "CN Tân Bình", "PGD Tân Phú", "PGD Trường Chinh", "PGD Tân Sơn Nhất", "PGD Gò Vấp", "CN Lạc Long Quân", "PGD Bình Tân", "PGD Lý Thường Kiệt", "PGD Quận 10", "PGD Chợ Thiếc", "CN Sài Gòn", "PGD Bình Thạnh", "PGD Bà Chiểu", "PGD Hoàng Việt", "PGD Lê Thị Riêng", "CN Bắc Sài Gòn", "PGD Hóc Môn", "PGD Tân Quy", "PGD Tây Bắc Củ Chi", "CN Cần Thơ", "PGD An Nghiệp", "PGD Bình Thủy", "PGD Ninh Kiều", "PGD Thốt Nốt", "PGD Ô môn", "CN An Giang", "PGD Châu Phú", "PGD Châu Đốc", "PGD Tân Châu", "PGD Long Xuyên", "CN Bạc Liêu", "PGD Hoàng Văn Thụ", "PGD Hộ Phòng", "PGD Hòa Bình-Bạc Liêu", "CN Đồng Nai", "PGD Hố Nai", "PGD Biên Hòa", "PGD Trảng Dài", "CN Bình Dương", "PGD Lái Thiêu", "CN Phan Thiết", "PGD Bắc Phan Thiết", "Trụ Sở chính"];
+    const unitList = ["CN Hà Nội", "PGD Đông Đô", "PGD Tràng An", "PGD Vạn Xuân", "PGD Long Biên", "PGD Tây Hồ", "PGD Trung Tâm", "PGD Cầu Giấy", "CN Hoàng Mai", "PGD Văn Quán", "PGD Tây Hà Nội", "CN Hà Đông", "PGD Phan Đình Phùng", "CN Thăng Long", "CN Bắc Ninh", "PGD Từ Sơn", "CN Quảng Ninh", "CN Hải Phòng", "PGD Lê Chân", "PGD Thủy Nguyên", "CN Đà Nẵng", "PGD Trung Tâm Thương Mại", "PGD Sơn Trà", "PGD An Hải", "PGD Trưng Nữ Vương", "PGD Trần Cao Vân", "PGD Thanh Khê", "PGD Hải Châu", "CN Hội An", "PGD Điện Bàn", "PGD Thăng Bình", "PGD Núi Thành", "PGD Duy Xuyên", "PGD Tam Kỳ", "CN Quảng Ngãi", "PGD Bình Sơn", "PGD Đức Phổ", "PGD Thạch Trụ", "PGD Lê Trung Đình", "PGD Sơn Tịnh", "CN Quy Nhơn", "PGD An Nhơn", "CN Buôn Ma Thuột", "CN TP Hồ Chí Minh", "PGD Quận 7", "PGD Khánh Hội", "PGD Quận 9", "PGD Thủ Thiêm", "PGD ĐT Nam Sài Gòn", "CN Chợ Lớn", "PGD Hòa Bình-Chợ Lớn", "PGD Phùng Hưng", "PGD Hồng Bàng", "PGD Phú Lâm", "PGD Quận 8", "CN Tân Bình", "PGD Tân Phú", "PGD Trường Chinh", "PGD Tân Sơn Nhất", "PGD Gò Vấp", "CN Lạc Long Quân", "PGD Bình Tân", "PGD Lý Thường Kiệt", "PGD Quận 10", "PGD Chợ Thiếc", "CN Sài Gòn", "PGD Bình Thạnh", "PGD Bà Chiểu", "PGD Hoàng Việt", "PGD Lê Thị Riêng", "CN Bắc Sài Gòn", "PGD Hóc Môn", "PGD Tân Quy", "PGD Tây Bắc Củ Chi", "CN Cần Thơ", "PGD An Nghiệp", "PGD Bình Thủy", "PGD Ninh Kiều", "PGD Thốt Nốt", "PGD Ô môn", "CN An Giang", "PGD Châu Phú", "PGD Châu Đốc", "PGD Tân Châu", "PGD Long Xuyên", "CN Bạc Liêu", "PGD Hoàng Văn Thụ", "PGD Hộ Phòng", "PGD Lương Tài", "CN Đồng Nai", "PGD Hố Nai", "PGD Biên Hòa", "PGD Trảng Dài", "CN Bình Dương", "PGD Lái Thiêu", "CN Phan Thiết", "PGD Bắc Phan Thiết", "Trụ Sở chính"];
     const datalist = document.getElementById('dvkd_list');
     unitList.forEach(unit => { let opt = document.createElement('option'); opt.value = unit; datalist.appendChild(opt); });
 
     function toggle(id) { document.getElementById(id).classList.toggle('show'); }
+    
     function setRate(id, value, btn) {
         document.getElementById('s_' + id).value = value;
         let parent = btn.parentElement;
         parent.querySelectorAll('.btn-eval').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active'); countFail();
+        btn.classList.add('active'); 
+        countFail();
     }
+
+    function forwardToSec5(id) {
+        let labelEl = document.getElementById('lbl_' + id);
+        let rawText = labelEl ? labelEl.innerText.replace(/^\d+\.\s*/, '').trim() : "Tiêu chí chưa đạt";
+        
+        // Cập nhật trạng thái của nút sang "Đang khắc phục"
+        let rowBox = document.getElementById('row_box_' + id);
+        if (rowBox) {
+            let pendingBtn = rowBox.querySelector('.btn-eval.pending');
+            if (pendingBtn) setRate(id, 'Đang khắc phục', pendingBtn);
+        }
+
+        // Đổ dữ liệu xuống Form Mục V
+        document.getElementById('err_desc').value = rawText;
+        document.getElementById('err_type').value = "Theo dõi";
+        toggleErrDetail();
+
+        document.getElementById('err_solution').value = "Đơn vị đã báo/chủ động phối hợp xử lý, tiếp tục theo dõi tiến độ.";
+        document.getElementById('err_date_type').value = "Cần phối hợp Phòng ban liên quan";
+        toggleDateInput();
+
+        // Đánh dấu đã liên kết
+        let linkedTag = document.getElementById('linked_tag_' + id);
+        if (linkedTag) linkedTag.style.display = 'inline-block';
+
+        // Cuộn xuống Mục V và mở rộng nếu đang đóng
+        let grp5 = document.getElementById('grp5');
+        if (!grp5.classList.contains('show')) grp5.classList.add('show');
+        
+        document.getElementById('err_desc').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('err_desc').style.boxShadow = "0 0 10px #ffc107";
+        setTimeout(() => { document.getElementById('err_desc').style.boxShadow = "none"; }, 1500);
+    }
+
     function countFail() {
-        let count = 0; document.querySelectorAll('.val-storage').forEach(el => { if(el.value === 'Không đạt') count++; });
-        document.getElementById('count_fail').innerText = count;
+        let failCount = 0;
+        let pendingCount = 0;
+        document.querySelectorAll('.val-storage').forEach(el => { 
+            if(el.value === 'Không đạt') failCount++; 
+            if(el.value === 'Đang khắc phục') pendingCount++;
+        });
+        document.getElementById('count_fail').innerText = `${failCount} (Đang xử lý: ${pendingCount})`;
     }
 
     function compressImage(file, maxWidth, quality, callback) {
@@ -721,12 +809,12 @@
         let detail = "";
         if (type === 'Ghi nhận trừ điểm tuân thủ') {
             let pts = document.getElementById('err_point').value;
-            if(pts) detail = pts; // Giá trị đã là "Trừ X điểm"
+            if(pts) detail = pts;
         } else if (type === 'Nhắc nhở (không trừ điểm)') {
             let rmd = document.getElementById('err_remind').value;
-            if(rmd) detail = rmd; // Giá trị đã là "Lần X"
+            if(rmd) detail = rmd;
         } else {
-            detail = ""; // Cho trường hợp "Theo dõi"
+            detail = "";
         }
 
         if(!desc) { alert("Chưa nhập nội dung lỗi!"); return; }
@@ -761,7 +849,6 @@
         errorList.forEach((e, i) => {
             let imgHtml = e.imgs.length > 0 ? `<div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;">${e.imgs.map(img => `<img src="${img}" class="preview-img" style="margin-top:0;">`).join('')}</div>` : "";
             
-            // Cập nhật logic ghép chữ hiển thị hình thức (trong giao diện nhập)
             let formattedType = e.type || '<i>Chưa nhập</i>';
             if (e.type === 'Ghi nhận trừ điểm tuân thủ' && e.detail) {
                 let pts = e.detail.replace('Trừ ', '');
@@ -846,15 +933,18 @@
         let user = document.getElementById('inp_user').value;
         document.getElementById('p_user').innerText = user || "...";
         document.getElementById('signer_name').innerText = user || "";
-        document.getElementById('p_manager').innerText = document.getElementById('inp_manager').value;
+        
+        // Gán Ý kiến Cán bộ đánh giá & Ý kiến Đơn vị vào bản in
+        document.getElementById('p_evaluator').innerText = document.getElementById('inp_evaluator').value || "(Không có ý kiến)";
+        document.getElementById('p_manager').innerText = document.getElementById('inp_manager').value || "(Không có ý kiến)";
 
-        let totalItems = 0, passedItems = 0, failedItems = 0;
+        let totalItems = 0, passedItems = 0, failedItems = 0, pendingItems = 0;
         let htmlReport = `<table class="report-table">
             <thead>
                 <tr style="background-color: #f0f0f0;">
                     <th width="200">Khu vực / Hạng mục</th>
-                    <th>Nội dung tiêu chí không đạt</th>
-                    <th width="100">Kết quả</th>
+                    <th>Nội dung tiêu chí không đạt / Đang khắc phục</th>
+                    <th width="140">Kết quả</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -873,10 +963,9 @@
 
             const container = document.getElementById(`${secId}_container`);
             let currentSubHeader = "Tiêu chí chung";
-            let groupedFails = {}; // Map chứa các lỗi theo từng nhóm sub-header
-            let secTotal = 0, secPass = 0, secFail = 0;
+            let groupedFails = {};
+            let secTotal = 0, secPass = 0, secFail = 0, secPending = 0;
 
-            // Quét qua tất cả các thẻ con
             Array.from(container.children).forEach(child => {
                 if (child.classList.contains('sub-header')) {
                     currentSubHeader = child.innerText;
@@ -890,31 +979,37 @@
                         let val = storage.value;
                         
                         totalItems++; secTotal++;
-                        if (val === 'Đạt') { passedItems++; secPass++; }
-                        if (val === 'Không đạt') { 
+                        if (val === 'Đạt') { 
+                            passedItems++; secPass++; 
+                        } else if (val === 'Đang khắc phục') {
+                            pendingItems++; secPending++;
+                            groupedFails[currentSubHeader].push({ labelTxt, val });
+                        } else if (val === 'Không đạt') { 
                             failedItems++; secFail++;
-                            // Nhét vào map theo nhóm
                             groupedFails[currentSubHeader].push({ labelTxt, val });
                         }
                     }
                 }
             });
 
-            if (secFail === 0 && secTotal > 0) {
+            if (secFail === 0 && secPending === 0 && secTotal > 0) {
                 htmlReport += `<tr class="row-pass-summary"><td colspan="3" class="text-center">★ Đánh giá : Toàn bộ ${secPass}/${secTotal} tiêu chí tại khu vực này đạt chuẩn.</td></tr>`;
             } else {
-                // In ra các lỗi đã được nhóm
                 for (const subHeader in groupedFails) {
                     const fails = groupedFails[subHeader];
                     if (fails.length > 0) {
                         fails.forEach((f, idx) => {
                             htmlReport += `<tr class="row-fail">`;
-                            // Nếu là dòng đầu tiên của nhóm, chèn ô có rowspan
                             if (idx === 0) {
                                 htmlReport += `<td rowspan="${fails.length}" style="font-weight:bold; font-size: 10.5pt; color: #000; vertical-align: middle;">${subHeader}</td>`;
                             }
+                            
+                            let resDisplay = f.val === 'Đang khắc phục' 
+                                ? `<span style="color:#000; font-weight:bold;">Đang khắc phục<br><small style="font-weight:normal; font-style:italic;">(Theo dõi tại Mục V)</small></span>` 
+                                : `<span style="color:#000; font-weight:bold;">Không đạt</span>`;
+                                
                             htmlReport += `<td>${f.labelTxt}</td>
-                                <td class="text-center" style="color:#000; font-weight:bold;">${f.val}</td>
+                                <td class="text-center">${resDisplay}</td>
                             </tr>`;
                         });
                     }
@@ -929,31 +1024,31 @@
         
         htmlReport += `</tbody></table>`;
 
-        // Nếu người dùng chưa chấm điểm cái gì cả
         if (totalItems === 0) {
             htmlReport = `<p style="text-align:center; font-style:italic; color:#000;">Chưa có dữ liệu đánh giá nào được ghi nhận cho phần I, II, III.</p>`;
         }
         document.getElementById('report_content').innerHTML = htmlReport;
 
-        // --- XÂY DỰNG BẢNG TÓM TẮT (EXECUTIVE SUMMARY) ---
         let complianceRate = totalItems > 0 ? Math.round((passedItems / totalItems) * 100) : 0;
 
         let summaryBoard = `
             <table class="summary-board">
-                <thead><tr><th colspan="4">BẢNG TÓM TẮT KẾT QUẢ ĐÁNH GIÁ </th></tr></thead>
+                <thead><tr><th colspan="4">BẢNG TÓM TẮT KẾT QUẢ ĐÁNH GIÁ</th></tr></thead>
                 <tbody>
                     <tr>
-                        <td width="25%">Tổng số tiêu chí kiểm tra<span class="val-highlight">${totalItems}</span></td>
+                        <td width="25%">Tổng tiêu chí kiểm tra<span class="val-highlight">${totalItems}</span></td>
                         <td width="25%">Số tiêu chí Đạt chuẩn<span class="val-highlight">${passedItems}</span></td>
+                        <td width="25%">Đang khắc phục / Chờ xử lý<span class="val-highlight">${pendingItems}</span></td>
                         <td width="25%">Số tiêu chí Không đạt<span class="val-highlight">${failedItems}</span></td>
-                        <td width="25%">Tỷ lệ tuân thủ CSVC<span class="val-highlight">${complianceRate}%</span></td>
                     </tr>
                     <tr style="background-color: #f9f9f9;">
                         <td colspan="2" style="text-align: left; padding-left: 15px; color: #000;">
-                            ▶ <b>Ghi nhận Nhân sự vi phạm:</b> <span style="font-weight: bold; font-size: 14pt; margin-left: 5px;">${staffList.length}</span> người/nhóm
+                            ▶ <b>Tỷ lệ Đạt chuẩn ban đầu:</b> <span style="font-weight: bold; font-size: 13pt; margin-left: 5px;">${complianceRate}%</span>
+                            <br><small style="font-style:italic; color:#555;">(Không trừ điểm các tiêu chí Đơn vị đã chủ động khắc phục)</small>
                         </td>
                         <td colspan="2" style="text-align: left; padding-left: 15px; color: #000;">
-                            ▶ <b>Ghi nhận Lỗi Hệ thống / CSVC:</b> <span style="font-weight: bold; font-size: 14pt; margin-left: 5px;">${errorList.length}</span> lỗi
+                            ▶ <b>Ghi nhận Lỗi / Theo dõi CSVC:</b> <span style="font-weight: bold; font-size: 13pt; margin-left: 5px;">${errorList.length}</span> vụ việc
+                            <br>▶ <b>Nhân sự vi phạm:</b> <span style="font-weight: bold; font-size: 13pt; margin-left: 5px;">${staffList.length}</span> người/nhóm
                         </td>
                     </tr>
                 </tbody>
@@ -979,7 +1074,6 @@
         
         // SETUP BẢNG LỖI CSVC ĐÃ GỘP CỘT "HƯỚNG XỬ LÝ" VÀ "THỜI HẠN/TRẠNG THÁI"
         setupTable(checkEval('sec5_eval_status'), 'sec5_reason', 'print_error_table', 'print_error_none', errorList, (e, i) => {
-            // Cập nhật logic ghép chữ hiển thị hình thức trên bản PDF
             let formattedType = e.type || '';
             if (e.type === 'Ghi nhận trừ điểm tuân thủ' && e.detail) {
                 let pts = e.detail.replace('Trừ ', '');
@@ -990,13 +1084,11 @@
                 formattedType = `<b>Theo dõi</b>`;
             }
             
-            // Gộp Hướng xử lý và Ngày tháng / Trạng thái
             let solutionCell = (e.solution || '-');
             if(e.date) {
                 solutionCell += `<div style="margin-top:8px; font-size:0.9em;">Hạn/Trạng thái: <b>${e.date}</b></div>`;
             }
             
-            // Xóa font-weight:bold ở thẻ td, dùng font bình thường để chữ in đậm ở formattedType nổi bật lên
             return `<tr>
                         <td class="text-center">${i+1}</td>
                         <td>${e.desc}</td>
@@ -1014,13 +1106,10 @@
     function closePreview() {
         document.getElementById('print-section').style.display = 'none';
         document.getElementById('inputScreen').style.display = 'block';
-        document.title = "Phiếu Đánh Giá CLDV (98 Đơn Vị)"; // Phục hồi tên trang khi quay về form
+        document.title = "Phiếu Đánh Giá CLDV (98 Đơn Vị)";
     }
 
-    // --- XỬ LÝ IN ẤN & ĐẶT TÊN FILE TỰ ĐỘNG ---
     function executePrint() {
-        // Tên file đã được đổi và giữ nguyên từ lúc bấm XEM & IN PDF
-        // Nên ở đây chỉ cần gọi lệnh in mặc định của trình duyệt
         window.print();
     }
 </script>
